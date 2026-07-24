@@ -1,0 +1,49 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\StudentController;
+use App\Http\Controllers\SessionController;
+use App\Http\Controllers\AnalyticsController;
+use App\Http\Controllers\CertificateTemplateController;
+use App\Http\Controllers\CertificateController;
+use App\Models\Student;
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register web routes for your application. These
+| routes are loaded by the RouteServiceProvider and all of them will
+| be assigned to the "web" middleware group. Make something great!
+|
+*/
+
+Route::redirect('/', '/dashboard');
+Route::get('/login', [AuthController::class, 'create'])->name('login');
+Route::post('/login', [AuthController::class, 'store'])->name('login.store');
+Route::post('/logout', [AuthController::class, 'destroy'])->middleware('auth')->name('logout');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/dashboard', function () {
+        return view('dashboard');
+    })->name('dashboard');
+    Route::resource('students', StudentController::class)->except('show');
+    Route::resource('certificate-templates', CertificateTemplateController::class)->except('show');
+    Route::get('/certificates', [CertificateController::class, 'index'])->name('certificates.index');
+    Route::get('/certificates/issue', [CertificateController::class, 'create'])->name('certificates.create');
+    Route::post('/certificates/issue', [CertificateController::class, 'store'])->name('certificates.store');
+    Route::get('/certificates/{certificate}/download', [CertificateController::class, 'download'])->name('certificates.download');
+    Route::delete('/certificates/{certificate}', [CertificateController::class, 'destroy'])->name('certificates.destroy');
+    Route::prefix('session')->name('session.')->group(function () {
+        Route::get('/students', [SessionController::class, 'students'])->name('students');
+        Route::get('/readings/{student}', [SessionController::class, 'readings'])->name('readings');
+        Route::get('/mushaf/{student}/{qiraat}', [SessionController::class, 'mushaf'])->name('mushaf');
+        Route::get('/mushaf/{student}/{qiraat}/page/{page}', [SessionController::class, 'page'])->name('mushaf.page');
+        Route::post('/{session}/confirm', [SessionController::class, 'confirm'])->name('confirm');
+        Route::post('/{session}/finish', [SessionController::class, 'finish'])->name('finish');
+    });
+    Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics');
+    Route::get('/analytics/students/{student}', [AnalyticsController::class, 'student'])->name('analytics.student');
+});
