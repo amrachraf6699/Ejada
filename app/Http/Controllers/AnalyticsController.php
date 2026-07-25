@@ -65,6 +65,7 @@ class AnalyticsController extends Controller
             $progress = $progresses->firstWhere('qiraat_id', $qiraat->id);
             $savedAyahs = (int) ($progress?->global_ayah_number ?? 0);
             return (object) [
+                'id' => $qiraat->id,
                 'name' => $qiraat->name,
                 'imam' => $qiraat->imam,
                 'saved_ayahs' => $savedAyahs,
