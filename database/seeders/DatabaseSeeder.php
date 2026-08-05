@@ -24,21 +24,28 @@ class DatabaseSeeder extends Seeder
         }
 
         $qiraats = [
-            ['name' => 'قراءة نافع المدني', 'imam' => 'نافع المدني', 'api_identifier' => env('QURAN_QIRAAT_NAFI'), 'is_available' => true],
-            ['name' => 'قراءة ابن كثير المكي', 'imam' => 'ابن كثير المكي', 'api_identifier' => env('QURAN_QIRAAT_IBN_KATHIR'), 'is_available' => true],
-            ['name' => 'قراءة أبي عمرو البصري', 'imam' => 'أبو عمرو البصري', 'api_identifier' => env('QURAN_QIRAAT_ABU_AMR'), 'is_available' => true],
-            ['name' => 'قراءة ابن عامر الشامي', 'imam' => 'ابن عامر الشامي', 'api_identifier' => env('QURAN_QIRAAT_IBN_AMER'), 'is_available' => true],
-            ['name' => 'قراءة عاصم الكوفي', 'imam' => 'عاصم الكوفي', 'api_identifier' => env('QURAN_QIRAAT_ASIM'), 'is_available' => true],
-            ['name' => 'قراءة حمزة الكوفي', 'imam' => 'حمزة الكوفي', 'api_identifier' => env('QURAN_QIRAAT_HAMZA'), 'is_available' => true],
-            ['name' => 'قراءة الكسائي الكوفي', 'imam' => 'الكسائي الكوفي', 'api_identifier' => env('QURAN_QIRAAT_KISAI'), 'is_available' => true],
-            ['name' => 'قراءة أبي جعفر المدني', 'imam' => 'أبو جعفر المدني', 'api_identifier' => env('QURAN_QIRAAT_ABU_JAFAR'), 'is_available' => true],
-            ['name' => 'قراءة يعقوب الحضرمي', 'imam' => 'يعقوب الحضرمي', 'api_identifier' => env('QURAN_QIRAAT_YAQUB'), 'is_available' => true],
-            ['name' => 'قراءة خلف العاشر', 'imam' => 'خلف العاشر', 'api_identifier' => env('QURAN_QIRAAT_KHALAF'), 'is_available' => true],
+            ['name' => 'نافع المدني', 'narrations' => ['قالون', 'ورش']],
+            ['name' => 'ابن كثير المكي', 'narrations' => ['البزي', 'قنبل']],
+            ['name' => 'أبو عمرو البصري', 'narrations' => ['الدوري', 'السوسي']],
+            ['name' => 'ابن عامر الشامي', 'narrations' => ['هشام', 'ابن ذاكون']],
+            ['name' => 'عاصم الكوفي', 'narrations' => ['شعبة', 'حفص']],
+            ['name' => 'حمزة الكوفي', 'narrations' => ['خلف', 'خلاد']],
+            ['name' => 'الكسائي', 'narrations' => ['أبو الحارث', 'الدوري']],
+            ['name' => 'أبو جعفر المدني', 'narrations' => ['ابن وردان', 'ابن جماز']],
+            ['name' => 'يعقوب الخضرمي', 'narrations' => ['رويس', 'روح']],
+            ['name' => 'خلف العاشر', 'narrations' => ['إسحاق', 'إدريس']],
         ];
 
-        foreach ($qiraats as $qiraat) {
-            \App\Models\Qiraat::updateOrCreate(['imam' => $qiraat['imam']], $qiraat);
+        foreach ($qiraats as $entry) {
+            $qiraat = \App\Models\Qiraat::create([
+                'name' => $entry['name'],
+                'imam' => $entry['name'],
+                'api_identifier' => 'quran-uthmani',
+                'is_available' => true,
+            ]);
+            foreach ($entry['narrations'] as $index => $name) {
+                $qiraat->narrations()->create(['name' => $name, 'sort_order' => $index + 1]);
+            }
         }
-        \App\Models\Qiraat::query()->update(['api_identifier' => 'quran-uthmani', 'is_available' => true]);
     }
 }

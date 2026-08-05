@@ -39,8 +39,9 @@ Route::middleware('auth')->group(function () {
     Route::prefix('session')->name('session.')->group(function () {
         Route::get('/students', [SessionController::class, 'students'])->name('students');
         Route::get('/readings/{student}', [SessionController::class, 'readings'])->name('readings');
-        Route::get('/mushaf/{student}/{qiraat}', [SessionController::class, 'mushaf'])->name('mushaf');
-        Route::get('/mushaf/{student}/{qiraat}/page/{page}', [SessionController::class, 'page'])->name('mushaf.page');
+        Route::get('/readings/{student}/{qiraat}', [SessionController::class, 'narrations'])->name('narrations');
+        Route::get('/mushaf/{student}/{narration}', [SessionController::class, 'mushaf'])->name('mushaf');
+        Route::get('/mushaf/{student}/{narration}/page/{page}', [SessionController::class, 'page'])->name('mushaf.page');
         Route::post('/{session}/confirm', [SessionController::class, 'confirm'])->name('confirm');
         Route::post('/{session}/finish', [SessionController::class, 'finish'])->name('finish');
     });

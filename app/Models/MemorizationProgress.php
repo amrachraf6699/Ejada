@@ -25,5 +25,5 @@ class MemorizationProgress extends Model
     }
 
     public function student(): BelongsTo { return $this->belongsTo(Student::class); }
-    public function qiraat(): BelongsTo { return $this->belongsTo(Qiraat::class); }
+    public function narration(): BelongsTo { return $this->belongsTo(Narration::class); }
 }

@@ -10,5 +10,5 @@ class Qiraat extends Model
     protected $fillable = ['name', 'imam', 'api_identifier', 'is_available'];
     protected $casts = ['is_available' => 'boolean'];
 
-    public function progress(): HasMany { return $this->hasMany(MemorizationProgress::class); }
+    public function narrations(): HasMany { return $this->hasMany(Narration::class)->orderBy('sort_order'); }
 }

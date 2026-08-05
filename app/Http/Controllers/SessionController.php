@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exceptions\QuranApiException;
 use App\Models\AyahConfirmation;
 use App\Models\MemorizationProgress;
+use App\Models\Narration;
 use App\Models\Qiraat;
 use App\Models\RecitationSession;
 use App\Models\Student;
@@ -25,14 +26,21 @@ class SessionController extends Controller
 
     public function readings(Student $student): View
     {
-        $qiraats = Qiraat::with(['progress' => fn ($query) => $query->where('student_id', $student->id)])->orderBy('id')->get();
+        $qiraats = Qiraat::with(['narrations.progress' => fn ($query) => $query->where('student_id', $student->id)])->orderBy('id')->get();
         return view('session.readings', compact('student', 'qiraats'));
     }
 
-    public function mushaf(Student $student, Qiraat $qiraat, QuranContentService $quran, Request $request): View
+    public function narrations(Student $student, Qiraat $qiraat): View
     {
-        $progress = MemorizationProgress::firstOrCreate(['student_id' => $student->id, 'qiraat_id' => $qiraat->id], ['surah_number' => 1, 'ayah_number' => 0, 'global_ayah_number' => 0, 'page_number' => 1]);
-        $session = RecitationSession::firstOrCreate(['user_id' => $request->user()->id, 'student_id' => $student->id, 'qiraat_id' => $qiraat->id, 'ended_at' => null], ['started_at' => now()]);
+        $qiraat->load(['narrations.progress' => fn ($query) => $query->where('student_id', $student->id)]);
+        return view('session.narrations', compact('student', 'qiraat'));
+    }
+
+    public function mushaf(Student $student, Narration $narration, QuranContentService $quran, Request $request): View
+    {
+        $qiraat = $narration->qiraat;
+        $progress = MemorizationProgress::firstOrCreate(['student_id' => $student->id, 'narration_id' => $narration->id], ['surah_number' => 1, 'ayah_number' => 0, 'global_ayah_number' => 0, 'page_number' => 1]);
+        $session = RecitationSession::firstOrCreate(['user_id' => $request->user()->id, 'student_id' => $student->id, 'narration_id' => $narration->id, 'ended_at' => null], ['started_at' => now()]);
         $page = min(604, max(1, (int) $request->integer('page', $progress->page_number ?: 1)));
         $mushaf = ['ayahs' => []];
         $quranError = null;
@@ -51,10 +59,10 @@ class SessionController extends Controller
             ->filter(fn (array $surah) => $surah['page'] <= $page)
             ->last()['number'] ?? 1;
 
-        return view('session.mushaf', compact('student', 'qiraat', 'progress', 'session', 'verses', 'page', 'quranError', 'surahs', 'currentSurahNumber'));
+        return view('session.mushaf', compact('student', 'qiraat', 'narration', 'progress', 'session', 'verses', 'page', 'quranError', 'surahs', 'currentSurahNumber'));
     }
 
-    public function page(Student $student, Qiraat $qiraat, int $page, QuranContentService $quran): JsonResponse
+    public function page(Student $student, Narration $narration, int $page, QuranContentService $quran): JsonResponse
     {
         abort_unless($page >= 1 && $page <= 604, 404);
         try {
@@ -70,7 +78,7 @@ class SessionController extends Controller
         $data = $request->validate(['surah_number' => ['required', 'integer', 'min:1'], 'ayah_number' => ['required', 'integer', 'min:1'], 'global_ayah_number' => ['required', 'integer', 'between:1,' . MemorizationProgress::TOTAL_AYAHS], 'page_number' => ['required', 'integer', 'between:1,604']]);
 
         $isComplete = DB::transaction(function () use ($session, $data) {
-            $progress = MemorizationProgress::firstOrCreate(['student_id' => $session->student_id, 'qiraat_id' => $session->qiraat_id], ['surah_number' => 1, 'ayah_number' => 0, 'global_ayah_number' => 0, 'page_number' => 1]);
+            $progress = MemorizationProgress::firstOrCreate(['student_id' => $session->student_id, 'narration_id' => $session->narration_id], ['surah_number' => 1, 'ayah_number' => 0, 'global_ayah_number' => 0, 'page_number' => 1]);
             $progress = MemorizationProgress::whereKey($progress->id)->lockForUpdate()->first();
             $start = $progress->global_ayah_number + 1;
             $end = $data['global_ayah_number'];
@@ -80,7 +88,7 @@ class SessionController extends Controller
                     ? ['surah_number' => $data['surah_number'], 'ayah_number' => $data['ayah_number']]
                     : app(QuranContentService::class)->locationForGlobalAyah($globalAyahNumber);
                 AyahConfirmation::updateOrCreate(
-                    ['student_id' => $session->student_id, 'qiraat_id' => $session->qiraat_id, 'global_ayah_number' => $globalAyahNumber],
+                    ['student_id' => $session->student_id, 'narration_id' => $session->narration_id, 'global_ayah_number' => $globalAyahNumber],
                     ['recitation_session_id' => $session->id, 'surah_number' => $location['surah_number'], 'ayah_number' => $location['ayah_number'], 'confirmed_at' => now()]
                 );
             }
@@ -90,7 +98,15 @@ class SessionController extends Controller
 
         if ($isComplete) {
             $session->update(['ended_at' => now()]);
-            return redirect()->route('session.readings', $session->student_id)->with('reading_completed', $session->qiraat->name);
+            $narration = $session->narration;
+            $qiraat = $narration->qiraat;
+            $qiraat->load(['narrations.progress' => fn ($query) => $query->where('student_id', $session->student_id)]);
+            $qiraatComplete = $qiraat->narrations->every(fn (Narration $item) => $item->progress->first()?->is_complete);
+            return redirect()->route('session.narrations', [$session->student_id, $qiraat])->with('narration_completed', [
+                'narration' => $narration->name,
+                'qiraat' => $qiraat->name,
+                'qiraat_complete' => $qiraatComplete,
+            ]);
         }
 
         return redirect()->route('dashboard')->with('success', 'تم حفظ تقدم التسميع بنجاح.');
