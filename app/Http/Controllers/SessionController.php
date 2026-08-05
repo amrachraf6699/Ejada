@@ -67,9 +67,9 @@ class SessionController extends Controller
     public function confirm(Request $request, RecitationSession $session): RedirectResponse
     {
         abort_unless($session->user_id === $request->user()->id && ! $session->ended_at, 403);
-        $data = $request->validate(['surah_number' => ['required', 'integer', 'min:1'], 'ayah_number' => ['required', 'integer', 'min:1'], 'global_ayah_number' => ['required', 'integer', 'min:1'], 'page_number' => ['required', 'integer', 'between:1,604']]);
+        $data = $request->validate(['surah_number' => ['required', 'integer', 'min:1'], 'ayah_number' => ['required', 'integer', 'min:1'], 'global_ayah_number' => ['required', 'integer', 'between:1,' . MemorizationProgress::TOTAL_AYAHS], 'page_number' => ['required', 'integer', 'between:1,604']]);
 
-        DB::transaction(function () use ($session, $data) {
+        $isComplete = DB::transaction(function () use ($session, $data) {
             $progress = MemorizationProgress::firstOrCreate(['student_id' => $session->student_id, 'qiraat_id' => $session->qiraat_id], ['surah_number' => 1, 'ayah_number' => 0, 'global_ayah_number' => 0, 'page_number' => 1]);
             $progress = MemorizationProgress::whereKey($progress->id)->lockForUpdate()->first();
             $start = $progress->global_ayah_number + 1;
@@ -85,7 +85,13 @@ class SessionController extends Controller
                 );
             }
             $progress->update(['surah_number' => $data['surah_number'], 'ayah_number' => $data['ayah_number'], 'global_ayah_number' => $data['global_ayah_number'], 'page_number' => $data['page_number'], 'last_confirmed_at' => now()]);
+            return $progress->is_complete;
         });
+
+        if ($isComplete) {
+            $session->update(['ended_at' => now()]);
+            return redirect()->route('session.readings', $session->student_id)->with('reading_completed', $session->qiraat->name);
+        }
 
         return redirect()->route('dashboard')->with('success', 'تم حفظ تقدم التسميع بنجاح.');
     }

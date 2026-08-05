@@ -66,4 +66,20 @@ class SessionTrackingTest extends TestCase
         $this->assertSame(7, MemorizationProgress::where('qiraat_id', $first->id)->value('global_ayah_number'));
         $this->assertNull(MemorizationProgress::where('qiraat_id', $second->id)->value('global_ayah_number'));
     }
+
+    public function test_confirming_the_final_ayah_completes_the_reading(): void
+    {
+        $user = User::factory()->create();
+        $student = Student::create(['name' => 'طالب مكتمل']);
+        $qiraat = Qiraat::create(['name' => 'قراءة الاختبار', 'imam' => 'إمام الاختبار', 'is_available' => true]);
+        $session = RecitationSession::create(['user_id' => $user->id, 'student_id' => $student->id, 'qiraat_id' => $qiraat->id, 'started_at' => now()]);
+        MemorizationProgress::create(['student_id' => $student->id, 'qiraat_id' => $qiraat->id, 'surah_number' => 114, 'ayah_number' => 5, 'global_ayah_number' => 6235, 'page_number' => 604]);
+
+        $this->actingAs($user)->post(route('session.confirm', $session), ['surah_number' => 114, 'ayah_number' => 6, 'global_ayah_number' => 6236, 'page_number' => 604])
+            ->assertRedirect(route('session.readings', $student))
+            ->assertSessionHas('reading_completed', $qiraat->name);
+
+        $this->assertDatabaseHas('memorization_progress', ['student_id' => $student->id, 'qiraat_id' => $qiraat->id, 'global_ayah_number' => 6236]);
+        $this->assertNotNull($session->fresh()->ended_at);
+    }
 }
