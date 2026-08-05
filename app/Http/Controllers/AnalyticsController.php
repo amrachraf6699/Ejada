@@ -7,11 +7,19 @@ use App\Models\Narration;
 use App\Models\Qiraat;
 use App\Models\RecitationSession;
 use App\Models\Student;
+use App\Services\AnalyticsReportService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class AnalyticsController extends Controller
 {
+    public function sendReport(AnalyticsReportService $reports): RedirectResponse
+    {
+        try { $reports->send(); return back()->with('success', 'تم إرسال تقرير PDF وملفات CSV إلى Telegram.'); }
+        catch (\Throwable $exception) { report($exception); return back()->with('error', $exception->getMessage()); }
+    }
+
     public function index(): View
     {
         $qiraats = Qiraat::with('narrations')->orderBy('id')->get();

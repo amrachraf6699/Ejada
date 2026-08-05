@@ -33,5 +33,6 @@
     <main class="min-w-0 flex-1"><header class="flex h-20 items-center justify-between border-b border-emerald-950/5 bg-white/70 px-5 backdrop-blur sm:px-8"><div class="flex items-center gap-4"><button aria-label="فتح القائمة" class="grid h-11 w-11 place-items-center rounded-xl border border-slate-200 text-2xl lg:hidden" @click="sidebarOpen=true"><i class="bx bx-menu"></i></button><div><div class="text-sm text-slate-400">{{ now()->locale('ar')->translatedFormat('l، j F Y') }}</div><div class="font-bold text-emerald-950">السلام عليكم، {{ auth()->user()->name }}</div></div></div><div class="hidden h-11 w-11 place-items-center rounded-full bg-emerald-100 font-bold text-emerald-900 sm:grid"><i class="bx bx-user text-xl"></i></div></header><div class="mx-auto max-w-7xl p-5 sm:p-8">@yield('content')</div></main>
 </div>
 @if(session('success'))<script>window.addEventListener('DOMContentLoaded',()=>Swal.fire({toast:true,position:'top-start',icon:'success',title:@json(session('success')),showConfirmButton:false,timer:3200,timerProgressBar:true}));</script>@endif
+@if(session('error'))<script>window.addEventListener('DOMContentLoaded',()=>Swal.fire({toast:true,position:'top-start',icon:'error',title:@json(session('error')),showConfirmButton:true}));</script>@endif
 </body>
 </html>

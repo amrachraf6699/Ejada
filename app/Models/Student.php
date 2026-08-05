@@ -14,4 +14,5 @@ class Student extends Model
 
     public function progress(): HasMany { return $this->hasMany(MemorizationProgress::class); }
     public function confirmations(): HasMany { return $this->hasMany(AyahConfirmation::class); }
+    public function issuedCertificates(): HasMany { return $this->hasMany(IssuedCertificate::class); }
 }

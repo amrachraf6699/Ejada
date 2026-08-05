@@ -5,9 +5,9 @@
             <div class="mb-2 text-sm font-bold text-gold">إدارة الحلقة</div>
             <h1 class="text-3xl font-extrabold text-emerald-950">الطلاب</h1>
             <p class="mt-2 text-slate-500">قائمة الطلاب المسجلين في حلقة التحفيظ.</p>
-        </div><a href="{{ route('students.create') }}"
+        </div><div class="flex flex-wrap gap-3"><a href="{{ route('students.import.create') }}" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-950 px-5 py-3.5 font-bold text-emerald-950"><i class="bx bx-upload text-xl"></i> استيراد التقدم</a><a href="{{ route('students.create') }}"
             class="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-950 px-5 py-3.5 font-bold text-white shadow-lg"><i
-                class="bx bx-plus text-xl text-gold"></i> إضافة طالب</a>
+                class="bx bx-plus text-xl text-gold"></i> إضافة طالب</a></div>
     </div>
     <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
         <form method="GET" class="mb-6 flex flex-col gap-3 sm:flex-row">

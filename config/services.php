@@ -39,4 +39,10 @@ return [
         'timeout' => (int) env('QURAN_API_TIMEOUT', 8),
     ],
 
+    'telegram' => [
+        'bot_token' => env('TELEGRAM_BOT_TOKEN'),
+        'chat_id' => env('TELEGRAM_CHAT_ID'),
+        'timeout' => (int) env('TELEGRAM_TIMEOUT', 30),
+    ],
+
 ];

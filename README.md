@@ -64,3 +64,7 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Scheduled Telegram delivery
+
+Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in `.env`, then run Laravel's scheduler every minute. On Windows, create a Task Scheduler task that runs `php artisan schedule:run` every minute; on Linux use `* * * * * php /path/to/artisan schedule:run`. The app sends the database backup at 08:00 and analytics reports at 08:15, Africa/Cairo time.
