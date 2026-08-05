@@ -42,7 +42,16 @@ class SessionController extends Controller
             $quranError = $exception->getMessage();
         }
         $verses = $mushaf['ayahs'] ?? [];
-        return view('session.mushaf', compact('student', 'qiraat', 'progress', 'session', 'verses', 'page', 'quranError'));
+        $surahs = collect(config('quran.surah_names'))->map(fn (string $name, int $number) => [
+            'number' => $number,
+            'name' => $name,
+            'page' => config("quran.surah_start_pages.{$number}"),
+        ])->values();
+        $currentSurahNumber = $surahs
+            ->filter(fn (array $surah) => $surah['page'] <= $page)
+            ->last()['number'] ?? 1;
+
+        return view('session.mushaf', compact('student', 'qiraat', 'progress', 'session', 'verses', 'page', 'quranError', 'surahs', 'currentSurahNumber'));
     }
 
     public function page(Student $student, Qiraat $qiraat, int $page, QuranContentService $quran): JsonResponse
