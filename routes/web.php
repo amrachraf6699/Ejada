@@ -1,14 +1,13 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\StudentController;
-use App\Http\Controllers\SessionController;
 use App\Http\Controllers\AnalyticsController;
-use App\Http\Controllers\CertificateTemplateController;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CertificateController;
+use App\Http\Controllers\CertificateTemplateController;
+use App\Http\Controllers\SessionController;
+use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentProgressImportController;
-use App\Models\Student;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -34,6 +33,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/students/import', [StudentProgressImportController::class, 'create'])->name('students.import.create');
     Route::post('/students/import', [StudentProgressImportController::class, 'store'])->name('students.import.store');
     Route::get('/students/import/template', [StudentProgressImportController::class, 'template'])->name('students.import.template');
+    Route::post('certificate-templates/{certificateTemplate}/clone', [CertificateTemplateController::class, 'cloneTemplate'])->name('certificate-templates.clone');
     Route::resource('certificate-templates', CertificateTemplateController::class)->except('show');
     Route::get('/certificates', [CertificateController::class, 'index'])->name('certificates.index');
     Route::get('/certificates/issue', [CertificateController::class, 'create'])->name('certificates.create');
