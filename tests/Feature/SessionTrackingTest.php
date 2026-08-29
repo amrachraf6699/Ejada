@@ -64,6 +64,47 @@ class SessionTrackingTest extends TestCase
         $this->actingAs($user)->get(route('session.narrations', [$student, $qiraat]))->assertOk()->assertSee('رواية الاختبار الأولى')->assertSee('رواية الاختبار الثانية');
     }
 
+    public function test_paired_readings_button_is_available_when_progress_matches(): void
+    {
+        [$qiraat] = $this->narrationPair();
+        $user = User::factory()->create();
+        $student = Student::create(['name' => 'طالب الروايتين']);
+
+        $this->actingAs($user)->get(route('session.narrations', [$student, $qiraat]))
+            ->assertOk()
+            ->assertSee('كلا الروايتان')
+            ->assertSee(route('session.mushaf.both', [$student, $qiraat]));
+    }
+
+    public function test_paired_readings_button_is_disabled_when_progress_differs(): void
+    {
+        [$qiraat, $first, $second] = $this->narrationPair();
+        $user = User::factory()->create();
+        $student = Student::create(['name' => 'طالب تقدم مختلف']);
+        MemorizationProgress::create(['student_id' => $student->id, 'narration_id' => $first->id, 'surah_number' => 1, 'ayah_number' => 2, 'global_ayah_number' => 2]);
+        MemorizationProgress::create(['student_id' => $student->id, 'narration_id' => $second->id, 'surah_number' => 1, 'ayah_number' => 1, 'global_ayah_number' => 1]);
+
+        $this->actingAs($user)->get(route('session.narrations', [$student, $qiraat]))
+            ->assertOk()
+            ->assertSee('كلا الروايتان')
+            ->assertSee('disabled');
+    }
+
+    public function test_confirming_an_ayah_for_paired_readings_updates_both_narrations(): void
+    {
+        [$qiraat, $first, $second] = $this->narrationPair();
+        $user = User::factory()->create();
+        $student = Student::create(['name' => 'طالب الروايتين']);
+
+        $this->actingAs($user)->post(route('session.confirm-both', [$student, $qiraat]), ['surah_number' => 1, 'ayah_number' => 1, 'global_ayah_number' => 1, 'page_number' => 1])
+            ->assertRedirect();
+
+        foreach ([$first, $second] as $narration) {
+            $this->assertDatabaseHas('memorization_progress', ['student_id' => $student->id, 'narration_id' => $narration->id, 'global_ayah_number' => 1]);
+            $this->assertDatabaseHas('ayah_confirmations', ['student_id' => $student->id, 'narration_id' => $narration->id, 'global_ayah_number' => 1]);
+        }
+    }
+
     public function test_completing_both_narrations_completes_the_parent_qiraat(): void
     {
         [$qiraat, $first, $second] = $this->narrationPair();
