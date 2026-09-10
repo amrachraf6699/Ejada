@@ -52,7 +52,7 @@ class SessionController extends Controller
     {
         $narrations = $qiraat->narrations()->orderBy('sort_order')->get(); abort_unless($narrations->count() === 2, 404);
         $active = $narrations->map(fn ($n) => $attempts->active($student, $n));
-        if ($active->pluck('attempt_number')->unique()->count() !== 1 || $active->pluck('progress.global_ayah_number')->unique()->count() !== 1) return back()->withErrors(['paired_readings' => 'لا يمكن التسميع للروايتين معًا لأن رقم المرة أو التقدم مختلف.']);
+        if ($active->pluck('progress.global_ayah_number')->unique()->count() !== 1) return back()->withErrors(['paired_readings' => 'لا يمكن التسميع للروايتين معًا لأن آخر آية مؤكدة مختلفة.']);
         $sessions = $active->map(fn ($attempt) => RecitationSession::firstOrCreate(['user_id' => $request->user()->id, 'recitation_attempt_id' => $attempt->id, 'ended_at' => null], ['student_id' => $student->id, 'narration_id' => $attempt->narration_id, 'started_at' => now()]));
         return $this->renderMushaf($student, $qiraat, $narrations->first(), $active->first(), $sessions->first(), $quran, $request, true);
     }
@@ -60,7 +60,15 @@ class SessionController extends Controller
     private function renderMushaf(Student $student, Qiraat $qiraat, Narration $narration, RecitationAttempt $attempt, RecitationSession $session, QuranContentService $quran, Request $request, bool $isPairedSession = false): View
     {
         $progress = $attempt->loadMissing('progress')->progress; $page = min(604, max(1, (int) $request->integer('page', $progress->page_number ?: 1))); $mushaf = ['ayahs' => []]; $quranError = null;
-        try { $mushaf = $quran->page($page); } catch (QuranApiException $e) { $quranError = $e->getMessage(); }
+        try {
+            $mushaf = $quran->page($page);
+            // Imported progress may only contain the surah's starting page.
+            if (! $request->has('page') && $progress->global_ayah_number > 0
+                && ! collect($mushaf['ayahs'])->contains('global_ayah_number', $progress->global_ayah_number)) {
+                $page = $quran->pageForAyah((int) $progress->global_ayah_number);
+                $mushaf = $quran->page($page);
+            }
+        } catch (QuranApiException $e) { $quranError = $e->getMessage(); }
         $verses = $mushaf['ayahs'] ?? []; $surahs = collect(config('quran.surah_names'))->map(fn ($name, $number) => ['number' => $number, 'name' => $name, 'page' => config("quran.surah_start_pages.{$number}")])->values();
         $currentSurahNumber = $surahs->filter(fn ($s) => $s['page'] <= $page)->last()['number'] ?? 1;
         return view('session.mushaf', compact('student', 'qiraat', 'narration', 'attempt', 'progress', 'session', 'verses', 'page', 'quranError', 'surahs', 'currentSurahNumber', 'isPairedSession'));
@@ -80,7 +88,7 @@ class SessionController extends Controller
     {
         $data = $this->data($request); $narrations = $qiraat->narrations()->orderBy('sort_order')->get(); abort_unless($narrations->count() === 2, 404);
         $sessions = $narrations->map(fn ($n) => RecitationSession::where('user_id', $request->user()->id)->where('student_id', $student->id)->where('narration_id', $n->id)->whereNull('ended_at')->latest()->firstOrFail());
-        DB::transaction(function () use ($sessions, $data) { $attempts = $sessions->map(fn ($s) => $s->attempt->fresh()->load('progress')); if ($attempts->pluck('attempt_number')->unique()->count() !== 1 || $attempts->pluck('progress.global_ayah_number')->unique()->count() !== 1) throw ValidationException::withMessages(['paired_readings' => 'لا يمكن حفظ التقدم للروايتين لأن رقم المرة أو التقدم مختلف.']); foreach ($sessions as $s) $this->saveProgress($s, $data); });
+        DB::transaction(function () use ($sessions, $data) { $attempts = $sessions->map(fn ($s) => $s->attempt->fresh()->load('progress')); if ($attempts->pluck('progress.global_ayah_number')->unique()->count() !== 1) throw ValidationException::withMessages(['paired_readings' => 'لا يمكن حفظ التقدم للروايتين لأن آخر آية مؤكدة مختلفة.']); foreach ($sessions as $s) $this->saveProgress($s, $data); });
         if ($data['global_ayah_number'] >= MemorizationProgress::TOTAL_AYAHS) { $sessions->each->update(['ended_at' => now()]); return redirect()->route('session.narrations', [$student, $qiraat])->with('narration_completed', ['narration' => 'كلا الروايتين', 'qiraat' => $qiraat->name, 'attempt_number' => $sessions->first()->attempt->attempt_number]); }
         return redirect()->route('dashboard')->with('success', 'تم حفظ تقدم الروايتين بنجاح.');
     }

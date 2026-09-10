@@ -64,6 +64,23 @@ class QuranContentService
         });
     }
 
+    public function pageForAyah(int $globalAyahNumber): int
+    {
+        return Cache::remember("quran.ayah.{$globalAyahNumber}.page", now()->addDay(), function () use ($globalAyahNumber) {
+            try {
+                $response = Http::acceptJson()->timeout(config('services.quran.timeout'))
+                    ->get($this->baseUrl() . "/ayah/{$globalAyahNumber}/quran-uthmani");
+            } catch (\Throwable) {
+                throw new QuranApiException('حدث خطأ أثناء الاتصال بمزود القرآن.');
+            }
+            $page = $response->json('data.page');
+            if ($response->failed() || ! is_numeric($page) || $page < 1 || $page > 604) {
+                throw new QuranApiException('تعذر تحديد صفحة آخر آية مؤكدة.');
+            }
+            return (int) $page;
+        });
+    }
+
     private function baseUrl(): string
     {
         return rtrim((string) config('services.quran.base_url', 'https://api.alquran.cloud/v1'), '/');

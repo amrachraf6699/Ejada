@@ -6,9 +6,20 @@
 @endphp<a href="{{ route('session.mushaf', [$student, $narration]) }}" class="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-gold hover:shadow-lg"><div class="mb-7 flex items-start justify-between"><div class="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-100 text-2xl text-emerald-800"><i class="bx bx-book-reader"></i></div><i class="bx bx-left-arrow-alt text-2xl text-gold"></i></div><h2 class="text-2xl font-bold text-emerald-950">رواية {{ $narration->name }}</h2><p class="mt-3 font-bold text-gold">أتم هذه الرواية {{ $completed }} مرات</p><div class="mt-4 border-t border-slate-100 pt-4 text-sm">@if($active && $active->progress->global_ayah_number)<span class="font-bold text-emerald-800">المرة {{ $active->attempt_number }} · آخر آية: {{ $active->progress->surah_name }}، الآية {{ $active->progress->ayah_number }}</span>@else<span class="text-slate-500">جاهزة لبدء المرة {{ $completed + 1 }}</span>@endif</div></a>@endforeach</div>
 @php
     $active=$qiraat->narrations->map(fn($n)=>$attempts->get($n->id,collect())->first(fn($a)=>!$a->completed_at));
-    $paired=$active->filter()->isEmpty() || ($active->filter()->count()===2&&$active->pluck('attempt_number')->unique()->count()===1&&$active->pluck('progress.global_ayah_number')->unique()->count()===1);
+    $paired=$active->count()===2 && $active->map(fn($a)=>(int)($a?->progress?->global_ayah_number ?? 0))->unique()->count()===1;
 @endphp
-<div class="mt-4">@if($paired)<a href="{{ route('session.mushaf.both', [$student, $qiraat]) }}" class="inline-flex items-center gap-2 rounded-2xl bg-emerald-950 px-5 py-4 font-bold text-white"><i class="bx bx-book-open"></i> كلا الروايتان</a>@else<button disabled class="cursor-not-allowed rounded-2xl bg-slate-200 px-5 py-4 font-bold text-slate-500">كلا الروايتان</button>@endif</div>
+<div class="mt-6">
+    @if($paired)
+        <a href="{{ route('session.mushaf.both', [$student, $qiraat]) }}" class="group flex w-full items-center gap-4 rounded-3xl border border-gold/40 bg-emerald-950 p-5 text-white shadow-lg shadow-emerald-950/10 transition hover:border-gold hover:bg-emerald-900 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 sm:w-auto sm:inline-flex sm:min-w-80">
+            <span class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gold/20 text-2xl text-gold"><i class="bx bx-book-open" aria-hidden="true"></i></span>
+            <span class="flex-1"><span class="block text-xl font-bold">كلا الروايتان</span><span class="mt-1 block text-sm text-emerald-100">جلسة واحدة لحفظ تقدم الروايتين</span></span>
+            <i class="bx bx-left-arrow-alt text-2xl text-gold transition-transform group-hover:-translate-x-1" aria-hidden="true"></i>
+        </a>
+    @else
+        <button disabled aria-describedby="paired-reading-hint" class="flex w-full cursor-not-allowed items-center gap-4 rounded-3xl border border-emerald-950/10 bg-emerald-950/5 p-5 text-emerald-950/50 sm:w-auto sm:min-w-80"><span class="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-950/5 text-2xl"><i class="bx bx-book-open" aria-hidden="true"></i></span><span class="text-xl font-bold">كلا الروايتان</span><i class="bx bx-lock-alt text-xl" aria-hidden="true"></i></button>
+        <p id="paired-reading-hint" class="mt-3 text-sm text-slate-500">تتاح الجلسة المشتركة عندما تكون آخر آية مؤكدة متطابقة في الروايتين.</p>
+    @endif
+</div>
 @error('paired_readings')<p class="mt-2 font-bold text-red-700">{{ $message }}</p>@enderror
 @if($completion=session('narration_completed'))<script>window.addEventListener('DOMContentLoaded',()=>Swal.fire({title:'مبارك! 🎉',text:`أتم الطالب ${@json($completion['narration'])} في المرة ${@json($completion['attempt_number'])}.`,icon:'success'}));</script>@endif
 @endsection
