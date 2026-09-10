@@ -7,6 +7,7 @@ use App\Http\Controllers\CertificateTemplateController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentProgressImportController;
+use App\Models\RecitationAttempt;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -27,7 +28,11 @@ Route::post('/logout', [AuthController::class, 'destroy'])->middleware('auth')->
 
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', function () {
-        return view('dashboard');
+        return view('dashboard', [
+            'completedAttempts' => RecitationAttempt::whereNotNull('completed_at')->count(),
+            'activeAttempts' => RecitationAttempt::whereNull('completed_at')->count(),
+            'recentCompletions' => RecitationAttempt::with('student', 'narration.qiraat')->whereNotNull('completed_at')->latest('completed_at')->take(5)->get(),
+        ]);
     })->name('dashboard');
     Route::resource('students', StudentController::class)->except('show');
     Route::get('/students/import', [StudentProgressImportController::class, 'create'])->name('students.import.create');

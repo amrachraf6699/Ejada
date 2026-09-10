@@ -7,6 +7,7 @@ use App\Models\Narration;
 use App\Models\Qiraat;
 use App\Models\RecitationSession;
 use App\Models\Student;
+use App\Models\RecitationAttempt;
 use App\Services\AnalyticsReportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
@@ -24,7 +25,7 @@ class AnalyticsController extends Controller
     {
         $qiraats = Qiraat::with('narrations')->orderBy('id')->get();
         $narrations = Narration::with('qiraat')->orderBy('qiraat_id')->orderBy('sort_order')->get();
-        $students = Student::with('progress.narration.qiraat')->withCount('confirmations')->orderBy('name')->get();
+        $students = Student::with('progress.narration.qiraat')->withCount(['confirmations', 'attempts as completed_attempts_count' => fn ($q) => $q->whereNotNull('completed_at')])->orderBy('name')->get();
         $students->each(function (Student $student) use ($qiraats, $narrations): void {
             $student->narration_progress = $this->narrationProgress($narrations, $student->progress);
             $student->qiraat_progress = $this->qiraatProgress($qiraats, $student->narration_progress);
@@ -51,6 +52,7 @@ class AnalyticsController extends Controller
         $sessions = RecitationSession::where('student_id', $student->id)->count();
         $ayahCount = AyahConfirmation::where('student_id', $student->id)->count();
         $savedAyahsAcrossReadings = $student->progress->sum('global_ayah_number');
+        $completedAttempts = RecitationAttempt::where('student_id', $student->id)->whereNotNull('completed_at')->count();
         $lastActivity = AyahConfirmation::where('student_id', $student->id)->latest('confirmed_at')->first();
         $activity = AyahConfirmation::with('narration.qiraat')
             ->where('student_id', $student->id)
@@ -73,13 +75,13 @@ class AnalyticsController extends Controller
             ->take(10)
             ->values();
 
-        return view('analytics.student', compact('student', 'sessions', 'ayahCount', 'savedAyahsAcrossReadings', 'lastActivity', 'qiraatProgress', 'narrationProgress', 'activity'));
+        return view('analytics.student', compact('student', 'sessions', 'ayahCount', 'completedAttempts', 'savedAyahsAcrossReadings', 'lastActivity', 'qiraatProgress', 'narrationProgress', 'activity'));
     }
 
     private function narrationProgress(Collection $narrations, Collection $progresses): Collection
     {
         return $narrations->map(function (Narration $narration) use ($progresses) {
-            $progress = $progresses->firstWhere('narration_id', $narration->id);
+            $progress = $progresses->where('narration_id', $narration->id)->sortByDesc('id')->first();
             $savedAyahs = (int) ($progress?->global_ayah_number ?? 0);
             return (object) [
                 'id' => $narration->id,
@@ -89,6 +91,7 @@ class AnalyticsController extends Controller
                 'saved_ayahs' => $savedAyahs,
                 'percentage' => round(min(100, ($savedAyahs / 6236) * 100), 2),
                 'is_complete' => $progress?->is_complete ?? false,
+                'completed_count' => $progress ? RecitationAttempt::where('student_id', $progress->student_id)->where('narration_id', $narration->id)->whereNotNull('completed_at')->count() : 0,
                 'progress' => $progress,
             ];
         });

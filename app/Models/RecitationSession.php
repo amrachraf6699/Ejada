@@ -8,9 +8,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class RecitationSession extends Model
 {
-    protected $fillable = ['user_id', 'student_id', 'narration_id', 'started_at', 'ended_at'];
+    protected $fillable = ['user_id', 'student_id', 'narration_id', 'recitation_attempt_id', 'started_at', 'ended_at'];
     protected $casts = ['started_at' => 'datetime', 'ended_at' => 'datetime'];
     public function student(): BelongsTo { return $this->belongsTo(Student::class); }
     public function narration(): BelongsTo { return $this->belongsTo(Narration::class); }
+    public function attempt(): BelongsTo { return $this->belongsTo(RecitationAttempt::class, 'recitation_attempt_id'); }
     public function confirmations(): HasMany { return $this->hasMany(AyahConfirmation::class); }
 }

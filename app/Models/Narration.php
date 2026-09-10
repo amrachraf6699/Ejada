@@ -14,4 +14,5 @@ class Narration extends Model
     public function progress(): HasMany { return $this->hasMany(MemorizationProgress::class); }
     public function sessions(): HasMany { return $this->hasMany(RecitationSession::class); }
     public function confirmations(): HasMany { return $this->hasMany(AyahConfirmation::class); }
+    public function attempts(): HasMany { return $this->hasMany(RecitationAttempt::class); }
 }

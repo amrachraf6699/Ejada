@@ -19,4 +19,5 @@ class AyahConfirmation extends Model
     public function session(): BelongsTo { return $this->belongsTo(RecitationSession::class, 'recitation_session_id'); }
     public function student(): BelongsTo { return $this->belongsTo(Student::class); }
     public function narration(): BelongsTo { return $this->belongsTo(Narration::class); }
+    public function attempt(): BelongsTo { return $this->belongsTo(RecitationAttempt::class, 'recitation_attempt_id'); }
 }

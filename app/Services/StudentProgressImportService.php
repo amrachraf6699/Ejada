@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\MemorizationProgress;
+use App\Models\RecitationAttempt;
 use App\Models\Narration;
 use App\Models\Qiraat;
 use App\Models\Student;
@@ -12,7 +13,7 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class StudentProgressImportService
 {
-    private const HEADERS = ['اسم الطالب', 'القراءة', 'الرواية', 'رقم السورة', 'رقم الآية', 'رقم الصفحة'];
+    private const HEADERS = ['اسم الطالب', 'القراءة', 'الرواية', 'رقم المرة', 'رقم السورة', 'رقم الآية', 'رقم الصفحة'];
 
     public function import(UploadedFile $file): array
     {
@@ -35,6 +36,7 @@ class StudentProgressImportService
                 $studentName = $this->value($row, $indexes['اسم الطالب']);
                 $qiraatName = $this->value($row, $indexes['القراءة']);
                 $narrationName = $this->value($row, $indexes['الرواية']);
+                $attemptNumber = $this->number($this->value($row, $indexes['رقم المرة']));
                 $surah = $this->number($this->value($row, $indexes['رقم السورة']));
                 $ayah = $this->number($this->value($row, $indexes['رقم الآية']));
                 if ($studentName === '' || $qiraatName === '' || $narrationName === '') throw new \InvalidArgumentException('اسم الطالب والقراءة والرواية مطلوبة.');
@@ -45,12 +47,16 @@ class StudentProgressImportService
                 $global = app(QuranContentService::class)->globalAyahNumber($surah, $ayah);
                 $page = $indexes['رقم الصفحة'] === false ? null : $this->number($this->value($row, $indexes['رقم الصفحة']), false);
                 if ($page !== null && ($page < 1 || $page > 604)) throw new \InvalidArgumentException('رقم الصفحة يجب أن يكون بين 1 و604.');
-                $outcome = DB::transaction(function () use ($studentName, $narration, $surah, $ayah, $global, $page) {
+                if ($attemptNumber < 1) throw new \InvalidArgumentException('رقم المرة يجب أن يكون 1 أو أكبر.');
+                $outcome = DB::transaction(function () use ($studentName, $narration, $attemptNumber, $surah, $ayah, $global, $page) {
                     $student = Student::all()->first(fn (Student $item) => $this->normalize($item->name) === $this->normalize($studentName)) ?? Student::create(['name' => $studentName]);
-                    $progress = MemorizationProgress::firstOrNew(['student_id' => $student->id, 'narration_id' => $narration->id]);
-                    if ($progress->exists && $progress->global_ayah_number >= $global) return ['status' => 'skipped', 'student' => $student->name, 'reason' => 'التقدم الحالي مساوي أو أبعد من الصف المستورد.'];
+                    $otherOpen = RecitationAttempt::where('student_id', $student->id)->where('narration_id', $narration->id)->where('attempt_number', '!=', $attemptNumber)->whereNull('completed_at')->exists();
+                    if ($otherOpen) throw new \InvalidArgumentException('يوجد رقم مرة آخر غير مكتمل لهذه الرواية.');
+                    $attempt = RecitationAttempt::firstOrCreate(['student_id' => $student->id, 'narration_id' => $narration->id, 'attempt_number' => $attemptNumber], ['started_at' => now()]);
+                    $progress = MemorizationProgress::firstOrNew(['recitation_attempt_id' => $attempt->id]);
                     $progress->fill(['surah_number' => $surah, 'ayah_number' => $ayah, 'global_ayah_number' => $global, 'page_number' => $page ?? config("quran.surah_start_pages.{$surah}", 1), 'last_confirmed_at' => now()])->save();
-                    return ['status' => 'success', 'student' => $student->name, 'reason' => $progress->wasRecentlyCreated ? 'تم إنشاء الطالب وحفظ تقدمه.' : 'تم تحديث تقدم الطالب.'];
+                    $attempt->update(['completed_at' => $global >= MemorizationProgress::TOTAL_AYAHS ? now() : null]);
+                    return ['status' => 'success', 'student' => $student->name, 'reason' => $progress->wasRecentlyCreated ? 'تم إنشاء المرة وحفظ تقدمها.' : 'تم تحديث تقدم المرة المستوردة.'];
                 });
                 $result[$outcome['status']][] = ['row' => $rowNumber, ...$outcome];
             } catch (\Throwable $exception) {

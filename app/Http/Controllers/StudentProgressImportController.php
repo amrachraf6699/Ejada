@@ -24,8 +24,8 @@ class StudentProgressImportController extends Controller
     public function template()
     {
         $sheet = (new Spreadsheet())->getActiveSheet(); $sheet->setRightToLeft(true);
-        $sheet->fromArray([['اسم الطالب', 'القراءة', 'الرواية', 'رقم السورة', 'رقم الآية', 'رقم الصفحة'], ['طالب جديد', 'عاصم الكوفي', 'حفص', 1, 7, 1]]);
-        foreach (range('A', 'F') as $column) $sheet->getColumnDimension($column)->setAutoSize(true);
+        $sheet->fromArray([['اسم الطالب', 'القراءة', 'الرواية', 'رقم المرة', 'رقم السورة', 'رقم الآية', 'رقم الصفحة'], ['طالب جديد', 'عاصم الكوفي', 'حفص', 1, 1, 7, 1]]);
+        foreach (range('A', 'G') as $column) $sheet->getColumnDimension($column)->setAutoSize(true);
         $path = storage_path('app/نماذج/نموذج_استيراد_تقدم_الطلاب.xlsx'); File::ensureDirectoryExists(dirname($path)); (new Xlsx($sheet->getParent()))->save($path);
         return response()->download($path, 'نموذج_استيراد_تقدم_الطلاب.xlsx')->deleteFileAfterSend();
     }
